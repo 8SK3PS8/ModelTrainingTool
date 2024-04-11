@@ -50,10 +50,14 @@ def get_the_last_directory(path):
                 
 def traverse_experiments():
     for experiment in glob.glob("/home/ajbam/Documents/data/*"):
-        print(experiment)
+        #print(experiment)
         experimentString = experiment + "/*"
         classifierArr = [] #For every experiment there is an array with 2 cells: One for A and one for B (in order to distinct what im classifying between)
         for category in glob.glob(experimentString):
+            #print(category)
+            if(category == (experiment + "/config.yaml")):
+                print("peepeepoopoo")
+                continue
 
             imageArr = [] #This is an array of images for each category
             categoryString = category + "/*"
@@ -64,6 +68,7 @@ def traverse_experiments():
             extracted_chunks = extract_chunks(imageArr, 20) # This array needs to be equal to the modified save chunks as it will return an array of chunks whioch will be used to train a model
             classifierArr.append(extracted_chunks) #This now has 1/2 or 2/2 cells one for each category of the expirement
 
+        print(experiment)
         path_name = get_the_last_directory(experiment)
         train(classifierArr, path_name) #The classifierArr can now be sent to the traiing method where it is loaded and then trained
 
