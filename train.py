@@ -1,7 +1,7 @@
-
 import os
 import cv2
 import glob
+import yaml
 
 from math import floor
 from keras.datasets import mnist
@@ -11,10 +11,13 @@ from keras.layers import Dense, Conv2D, Flatten
 from keras.models import load_model
 import numpy as np
 
+#Quick Summary of Code - AJ Bamgbelu
+#This takes the images that you have saved in the data directory (images should be in their respective categroy within an expirement), and it cuts them into chunks and the runs a classifier model on them
+#This code is compatiable with as many categories that you create within an experiment.
 
 
-#change save chunks to store everything in an array and not send it to an ou8tput folder but to store it in an array
-#Modify save chunks to take in images by category in the for of an array and have it run through thiungs and then return an array of all the chunks for one category
+
+#This extracts the chunks in the image
 def extract_chunks(images, chunk_size):
     #Needs at least one image in the folder to run
     height, width, _ = images[0].shape
@@ -49,14 +52,15 @@ def get_the_last_directory(path):
     return path.split('/')[-1]
                 
 def traverse_experiments():
-    for experiment in glob.glob("/home/ajbam/Documents/data/*"):
+    filepath = "/home/{}/Documents/data/*"
+
+    for experiment in glob.glob(filepath.format(os.environ['USER'])):
         #print(experiment)
         experimentString = experiment + "/*"
-        classifierArr = [] #For every experiment there is an array with 2 cells: One for A and one for B (in order to distinct what im classifying between)
+        classifierArr = [] #For every experiment there is an array with N cells: One for A and one for B (in order to distinct what im classifying between)
         for category in glob.glob(experimentString):
             #print(category)
             if(category == (experiment + "/config.yaml")):
-                print("peepeepoopoo")
                 continue
 
             imageArr = [] #This is an array of images for each category
@@ -65,29 +69,30 @@ def traverse_experiments():
                 print(image)
                 imageArr.append(cv2.imread(image)) #This is appending each image of a category ('pool', 'reef', etc) to one array
 
-            extracted_chunks = extract_chunks(imageArr, 20) # This array needs to be equal to the modified save chunks as it will return an array of chunks whioch will be used to train a model
-            classifierArr.append(extracted_chunks) #This now has 1/2 or 2/2 cells one for each category of the expirement
+
+            config = yaml.safe_load(open(experiment + "/config.yaml"))
+            chunk_size = config['chunk_size']
+            extracted_chunks = extract_chunks(imageArr, chunk_size) # This array now holds the image chunks that will be used to train the model
+            classifierArr.append(extracted_chunks) #This now has 1/N or 2/N or N/N cells one for each category (N) of the expirement
 
         print(len(classifierArr))
         path_name = get_the_last_directory(experiment)
-        train(classifierArr, path_name) #The classifierArr can now be sent to the traiing method where it is loaded and then trained
+        train(classifierArr, path_name, len(classifierArr)) #The classifierArr can now be sent to the training method where it is loaded and then trained
 
-
-def train(classifierArr, path_name):
+def train(classifierArr, path_name, num_categories):
     #assert len(classifierArr) == 2
-    (x_train, y_train), (x_test, y_test) = configure_test_and_train_sets(classifierArr[0], classifierArr[1])
+    (x_train, y_train), (x_test, y_test) = configure_test_and_train_sets(classifierArr)
     x_train = (x_train / 255)
     x_test = (x_test / 255)
     y_train = to_categorical(y_train)
     y_test = to_categorical(y_test)
-
 
     model = Sequential() 
 
     model.add(Conv2D(64, kernel_size=3, activation="relu", input_shape=(20,20,3)))
     model.add(Conv2D(32, kernel_size=3, activation="relu"))
     model.add(Flatten())
-    model.add(Dense(2, activation="softmax"))
+    model.add(Dense(num_categories, activation="softmax"))
 
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
@@ -96,9 +101,7 @@ def train(classifierArr, path_name):
     model_name = path_name + "_cnn.h5"
     model.save(model_name)
         
-
-
-def configure_test_and_train_sets(cutImagesA, cutImagesB):
+def configure_test_and_train_sets(cutImages):
     x_train = [] # shape should be (x,20,20, 3)
     y_train = []
 
@@ -106,26 +109,19 @@ def configure_test_and_train_sets(cutImagesA, cutImagesB):
     y_test = []
 
     #generalizable classification laoading
+    y_increment = 0
+    for category in cutImages:
+        
+        for imageIndex in range(len(category)//2):
+            x_train.append(category[imageIndex])
+            y_train.append(y_increment)
+        
+        for imageIndex in range(len(category)//2, len(category)):
+            x_test.append(category[imageIndex])
+            y_test.append(y_increment)
 
-    #This uses the first half of the first set of cutImages for the training set
-    for imageIndex in range(len(cutImagesA)//2):
-        x_train.append(cutImagesA[imageIndex])
-        y_train.append(0)
-    
-    #This uses the second half of the first set of cutImages for the testing set
-    for imageIndex in range(len(cutImagesA)//2, len(cutImagesA)):
-        x_test.append(cutImagesA[imageIndex])
-        y_test.append(0)
+        y_increment += 1
 
-    #This uses the first half of the first set of cutImages for the training set
-    for imageIndex in range(len(cutImagesB)//2):
-        x_train.append(cutImagesB[imageIndex])
-        y_train.append(1)
-    
-    #This uses the second half of the first set of cutImages for the testing set
-    for imageIndex in range(len(cutImagesB)//2, len(cutImagesB)):
-        x_test.append(cutImagesB[imageIndex])
-        y_test.append(1)
 
     # [ 0 ] * 200
     # == [0, 0, ..., 0]
@@ -138,34 +134,7 @@ def configure_test_and_train_sets(cutImagesA, cutImagesB):
 
     return (x_train, y_train), (x_test, y_test)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 traverse_experiments()
-
-
-
-
 
 def main():
     pass
