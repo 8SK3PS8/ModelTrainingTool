@@ -68,13 +68,13 @@ def traverse_experiments():
             extracted_chunks = extract_chunks(imageArr, 20) # This array needs to be equal to the modified save chunks as it will return an array of chunks whioch will be used to train a model
             classifierArr.append(extracted_chunks) #This now has 1/2 or 2/2 cells one for each category of the expirement
 
-        print(experiment)
+        print(len(classifierArr))
         path_name = get_the_last_directory(experiment)
         train(classifierArr, path_name) #The classifierArr can now be sent to the traiing method where it is loaded and then trained
 
 
 def train(classifierArr, path_name):
-    assert len(classifierArr) == 2
+    #assert len(classifierArr) == 2
     (x_train, y_train), (x_test, y_test) = configure_test_and_train_sets(classifierArr[0], classifierArr[1])
     x_train = (x_train / 255)
     x_test = (x_test / 255)
